@@ -76,8 +76,16 @@ table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 7px 8px; white-space: nowrap; }
 th { color: #8fb8e0; font-weight: 500; font-size: 12px; border-bottom: 1px solid #2a3340; }
 tbody tr { border-bottom: 1px solid #1a212b; }
-#toppicks td.score { font-weight: 700; color: #2ecc71; }
+#toppicks td.val { font-weight: 700; color: #2ecc71; }
 #toppicks td.rng { color: #8a93a0; font-size: 12.5px; }
+#toppicks td.adp { text-align: right; color: #b5bcc7; }
+
+/* ADP vs our value: steal (market cheap) / reach (market early) */
+.adp.steal, .padp.steal { color: #2ecc71; font-weight: 600; }
+.adp.reach, .padp.reach { color: #e67e22; }
+.gloss { margin: -2px 0 10px; font-size: 11.5px; line-height: 1.5; }
+.gloss b { color: #b5bcc7; }
+.gloss .adp { font-weight: 600; }
 #toppicks tr.best td { background: #16261a; }
 #toppicks .pname { font-weight: 600; }
 #recent tr.ours td { background: #16261a; }
@@ -92,11 +100,12 @@ tbody tr { border-bottom: 1px solid #1a212b; }
 }
 .col h3 .ct { color: #6b7785; font-size: 11px; font-weight: 400; }
 .player {
-  display: grid; grid-template-columns: 18px 1fr auto auto; align-items: center;
+  display: grid; grid-template-columns: 18px 1fr auto auto auto; align-items: center;
   gap: 6px; padding: 4px 5px; margin: 2px 0; border-radius: 5px;
   background: #20293605; font-size: 13px;
 }
 .player.starred { background: #2a2410; box-shadow: inset 2px 0 0 #f1c40f; }
+.player .padp { font-size: 11px; color: #6b7785; text-align: right; min-width: 22px; }
 .player.tier-break { margin-top: 11px; border-top: 2px dashed #e67e22; padding-top: 8px; }
 .player .pn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .player .ag { font-size: 11px; color: #8a93a0; text-align: right; }

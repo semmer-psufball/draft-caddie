@@ -144,6 +144,14 @@ async function fetchDraft() {
 // ---------- rendering ----------
 function fmt(n) { return Math.round(n); }
 function ageClass(age) { return age == null ? "" : age < 25 ? "young" : age > 29 ? "old" : ""; }
+// market ADP vs our value rank: green if the market drafts him notably later than we
+// rank him (a value/steal), orange if the market reaches earlier than we would.
+function adpClass(row) {
+  if (row.adp == null) return "";
+  const edge = row.adp - row.rank;
+  return edge >= 6 ? "steal" : edge <= -6 ? "reach" : "";
+}
+function adpText(row) { return row.adp == null ? "—" : String(fmt(row.adp)); }
 
 function render(draft, picks) {
   LAST = { draft, picks };
@@ -202,14 +210,14 @@ function render(draft, picks) {
   renderWatchlist(draftedPids, scoreByPid);
 
   // top picks
-  $("#toppicks tbody").innerHTML = scored.slice(0, 10).map(({ row, score }, i) =>
+  $("#toppicks tbody").innerHTML = scored.slice(0, 10).map(({ row }, i) =>
     `<tr class="${i === 0 ? "best" : ""}">` +
     `<td>${i + 1}${i === 0 ? " ★" : ""}</td>` +
     `<td class="pname">${starHTML(row.player_id)} ${esc(row.name)}</td>` +
     `<td>${esc(row.pos)}</td><td>${row.age}</td>` +
-    `<td>${row.par_now_wk.toFixed(1)}</td><td>${fmt(row.dyn_par)}</td>` +
+    `<td class="val">${fmt(row.dyn_par)}</td>` +
     `<td class="rng">${fmt(row.par_floor)}–${fmt(row.par_ceil)}</td>` +
-    `<td class="score">${fmt(score)}</td></tr>`
+    `<td class="adp ${adpClass(row)}">${adpText(row)}</td></tr>`
   ).join("");
 
   // best available by position (collapsible)
@@ -235,6 +243,7 @@ function render(draft, picks) {
         `<span class="pn">${esc(r.name)}</span>` +
         `<span class="ag ${ageClass(r.age)}">${r.age}y</span>` +
         `<span class="pt">${fmt(r.dyn_par)}</span>` +
+        `<span class="padp ${adpClass(r)}">${adpText(r)}</span>` +
         `<span class="bar" style="width:${w}%"></span></div>`;
     }).join("");
     const moreCount = full.length - COLLAPSED_PER_POS;

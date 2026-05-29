@@ -43,14 +43,19 @@
   </section>
 
   <section class="panel pick-panel">
-    <h2>★ Best picks for you now
-      <span class="muted">score = dynasty PAR + roster fit · PAR = pts above replacement</span>
-    </h2>
+    <h2>★ Best picks for you now <span class="muted">ranked for your roster</span></h2>
+    <p class="gloss muted">
+      <b>Value</b> = projected long-term worth (higher = better) ·
+      <b>Floor–Ceil</b> = worst → best case ·
+      <b>ADP</b> = market draft spot:
+      <span class="adp steal">green</span> = steal (cheaper than our value),
+      <span class="adp reach">orange</span> = market reach
+    </p>
     <div class="table-wrap">
       <table id="toppicks">
         <thead><tr>
           <th>#</th><th>Player</th><th>Pos</th><th>Age</th>
-          <th>PAR/wk</th><th>Dyn&nbsp;PAR</th><th>Floor–Ceil</th><th>Score</th>
+          <th>Value</th><th>Floor–Ceil</th><th>ADP</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -61,8 +66,8 @@
     <h2>Best available by position</h2>
     <div id="positions" class="grid"></div>
     <p class="legend muted">
-      Number + bar = expected dynasty PAR (simulated multi-year points above replacement)
-      vs. the top remaining at that position. Dashed orange line = tier break.
+      Left number + bar = Value (dynasty worth). Right number = market ADP
+      (<span class="adp steal">green</span> = steal). Dashed orange line = tier break.
     </p>
   </section>
 
