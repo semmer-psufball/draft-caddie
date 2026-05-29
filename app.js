@@ -40,20 +40,24 @@ function ourNextPick(nextNo, ourSlot, teams) {
   }
 }
 
-// ---------- lineup value (port of value_model.py:168) ----------
-function lineupPoints(roster, meta) {
+// ---------- starting-lineup PAR (roster-need signal) ----------
+// Value the optimal starting lineup in PAR units (points above replacement), not raw
+// points — so a QB's high replacement level isn't mistaken for roster value. A below-
+// replacement starter contributes 0 (you'd never actually start them).
+function lineupPAR(roster, meta) {
   const starters = meta.starters;          // {QB:1,RB:2,WR:2,TE:1}
   const flexPos = meta.flex_pos;           // ["RB","WR","TE"]
+  const val = (r) => Math.max(r.par_now || 0, 0);
   const used = new Set();
   let total = 0;
   for (const pos of Object.keys(starters)) {
-    const pool = roster.filter((r) => r.pos === pos).sort((a, b) => b.pts - a.pts);
-    for (const r of pool.slice(0, starters[pos])) { used.add(r.player_id); total += r.pts; }
+    const pool = roster.filter((r) => r.pos === pos).sort((a, b) => val(b) - val(a));
+    for (const r of pool.slice(0, starters[pos])) { used.add(r.player_id); total += val(r); }
   }
   const flex = roster
     .filter((r) => flexPos.includes(r.pos) && !used.has(r.player_id))
-    .sort((a, b) => b.pts - a.pts);
-  for (const r of flex.slice(0, meta.flex)) total += r.pts;
+    .sort((a, b) => val(b) - val(a));
+  for (const r of flex.slice(0, meta.flex)) total += val(r);
   return total;
 }
 
@@ -63,10 +67,12 @@ function scoreAvail(myPids, draftedPids) {
   const taken = new Set([...myPids, ...draftedPids]);
   const myRoster = BOARD.players.filter((r) => myPids.has(r.player_id));
   const avail = BOARD.players.filter((r) => !taken.has(r.player_id));
-  const cur = lineupPoints(myRoster, meta);
+  const cur = lineupPAR(myRoster, meta);
+  const fit = meta.fit_weight ?? 0.5;
   const scored = avail.map((r) => {
-    const marg = lineupPoints([...myRoster, r], meta) - cur;
-    return { row: r, marg, score: marg + meta.vor_weight * r.vor };
+    // marginal starting-lineup PAR = roster need; dyn_par = dynasty asset value
+    const marg = lineupPAR([...myRoster, r], meta) - cur;
+    return { row: r, marg, score: r.dyn_par + fit * marg };
   });
   scored.sort((a, b) => b.score - a.score);
   return { scored, myRoster };
@@ -75,9 +81,9 @@ function scoreAvail(myPids, draftedPids) {
 // ---------- tier marking (port of live_draft.py:_tier_marked) ----------
 function tierMark(players, frac) {
   if (!players.length) return players;
-  const top = players[0].dyn || 1;
+  const top = players[0].dyn_par || 1;
   players.forEach((p, i) => {
-    p._tier = i > 0 && players[i - 1].dyn - p.dyn > frac * top;
+    p._tier = i > 0 && players[i - 1].dyn_par - p.dyn_par > frac * top;
   });
   return players;
 }
@@ -159,12 +165,13 @@ function render(draft, picks) {
   }
 
   // top picks
-  $("#toppicks tbody").innerHTML = scored.slice(0, 10).map(({ row, marg, score }, i) =>
+  $("#toppicks tbody").innerHTML = scored.slice(0, 10).map(({ row, score }, i) =>
     `<tr class="${i === 0 ? "best" : ""}">` +
     `<td>${i + 1}${i === 0 ? " ★" : ""}</td>` +
     `<td class="pname">${esc(row.name)}</td><td>${esc(row.pos)}</td><td>${row.age}</td>` +
-    `<td>${fmt(row.pts)}</td><td>${marg.toFixed(0)}</td>` +
-    `<td>${fmt(row.vor)}</td><td class="score">${fmt(score)}</td></tr>`
+    `<td>${row.par_now_wk.toFixed(1)}</td><td>${fmt(row.dyn_par)}</td>` +
+    `<td class="rng">${fmt(row.par_floor)}–${fmt(row.par_ceil)}</td>` +
+    `<td class="score">${fmt(score)}</td></tr>`
   ).join("");
 
   // best available by position
@@ -173,17 +180,17 @@ function render(draft, picks) {
     const pool = tierMark(
       BOARD.players
         .filter((r) => r.pos === pos && !draftedPids.has(r.player_id))
-        .sort((a, b) => b.dyn - a.dyn)
+        .sort((a, b) => b.dyn_par - a.dyn_par)
         .slice(0, COLS_PER_POS),
       meta.tier_break_frac
     );
-    const maxDyn = pool.length ? pool[0].dyn || 1 : 1;
+    const maxDyn = pool.length ? pool[0].dyn_par || 1 : 1;
     const rows = pool.map((r) => {
-      const w = Math.max(8, Math.round((r.dyn / maxDyn) * 100));
+      const w = Math.max(8, Math.round((Math.max(r.dyn_par, 0) / maxDyn) * 100));
       return `<div class="player${r._tier ? " tier-break" : ""}">` +
         `<span class="pn">${esc(r.name)}</span>` +
         `<span class="ag ${ageClass(r.age)}">${r.age}y</span>` +
-        `<span class="pt">${fmt(r.pts)}</span>` +
+        `<span class="pt">${fmt(r.dyn_par)}</span>` +
         `<span class="bar" style="width:${w}%"></span></div>`;
     }).join("");
     return `<div class="col"><h3>${pos} <span class="ct">(${pool.length})</span></h3>${rows}</div>`;

@@ -77,6 +77,7 @@ th, td { text-align: left; padding: 7px 8px; white-space: nowrap; }
 th { color: #8fb8e0; font-weight: 500; font-size: 12px; border-bottom: 1px solid #2a3340; }
 tbody tr { border-bottom: 1px solid #1a212b; }
 #toppicks td.score { font-weight: 700; color: #2ecc71; }
+#toppicks td.rng { color: #8a93a0; font-size: 12.5px; }
 #toppicks tr.best td { background: #16261a; }
 #toppicks .pname { font-weight: 600; }
 #recent tr.ours td { background: #16261a; }

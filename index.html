@@ -39,13 +39,13 @@
 
   <section class="panel pick-panel">
     <h2>★ Best picks for you now
-      <span class="muted">score = marginal lineup + 0.6·VOR</span>
+      <span class="muted">score = dynasty PAR + roster fit · PAR = pts above replacement</span>
     </h2>
     <div class="table-wrap">
       <table id="toppicks">
         <thead><tr>
           <th>#</th><th>Player</th><th>Pos</th><th>Age</th>
-          <th>Pts</th><th>Marg</th><th>VOR</th><th>Score</th>
+          <th>PAR/wk</th><th>Dyn&nbsp;PAR</th><th>Floor–Ceil</th><th>Score</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -56,8 +56,8 @@
     <h2>Best available by position</h2>
     <div id="positions" class="grid"></div>
     <p class="legend muted">
-      Bar = dynasty value (multi-year, age-adjusted) vs. the top remaining at that position.
-      Dashed orange line = tier break.
+      Number + bar = expected dynasty PAR (simulated multi-year points above replacement)
+      vs. the top remaining at that position. Dashed orange line = tier break.
     </p>
   </section>
 
