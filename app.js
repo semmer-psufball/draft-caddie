@@ -3,13 +3,20 @@
 // Draft Caddie — client-side draft assistant.
 // Loads the precomputed value board (board.json), fetches LIVE picks from the
 // Sleeper API on demand, and recomputes recommendations entirely in the browser.
-// The scoring math is a faithful port of value_model.py / live_draft.py.
+// The scoring math is a faithful port of par_model.py / value_model.py.
 
 const SLEEPER = "https://api.sleeper.app/v1";
-const COLS_PER_POS = 16;
+const COLLAPSED_PER_POS = 10;                          // rows shown before "Show more"
+const POS_CAP = { QB: 32, RB: 80, WR: 90, TE: 45 };    // max rows when expanded
+const WATCHLIST_KEY = "caddie_watchlist_v1";
+// First-run seed = the upside guys we flagged (McMillan, Burden, LaPorta, Pitts, Kraft, Sadiq)
+const SEED_WATCHLIST = ["12526", "12519", "10859", "7553", "9484", "13330"];
 
 let BOARD = null;          // { meta, players: [...] }
 let BYID = null;           // player_id -> player row
+let WATCH = null;          // Set of starred player_ids (persisted)
+let LAST = null;           // { draft, picks } — kept so star/show-more re-render without refetch
+const EXPANDED = { QB: false, RB: false, WR: false, TE: false };
 
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g,
@@ -19,6 +26,32 @@ const setStatus = (msg, isErr) => {
   el.textContent = msg || "";
   el.classList.toggle("error", !!isErr);
 };
+
+// ---------- watchlist (localStorage) ----------
+function loadWatch() {
+  try {
+    const raw = localStorage.getItem(WATCHLIST_KEY);
+    if (raw === null) {                       // first run -> seed our flagged guys
+      const seed = new Set(SEED_WATCHLIST);
+      localStorage.setItem(WATCHLIST_KEY, JSON.stringify([...seed]));
+      return seed;
+    }
+    return new Set(JSON.parse(raw));
+  } catch { return new Set(); }
+}
+function saveWatch() {
+  try { localStorage.setItem(WATCHLIST_KEY, JSON.stringify([...WATCH])); } catch {}
+}
+function toggleStar(pid) {
+  if (WATCH.has(pid)) WATCH.delete(pid); else WATCH.add(pid);
+  saveWatch();
+  if (LAST) render(LAST.draft, LAST.picks);
+}
+function starHTML(pid) {
+  const on = WATCH.has(pid);
+  return `<span class="star${on ? " on" : ""}" data-pid="${esc(pid)}" role="button" ` +
+    `aria-label="${on ? "remove from" : "add to"} watchlist">${on ? "★" : "☆"}</span>`;
+}
 
 // ---------- snake-draft position math (port of live_draft.py:39-60) ----------
 function overallPick(round_, slot, teams) {
@@ -61,7 +94,7 @@ function lineupPAR(roster, meta) {
   return total;
 }
 
-// ---------- ranked recommendations (port of live_draft.py:79) ----------
+// ---------- ranked recommendations ----------
 function scoreAvail(myPids, draftedPids) {
   const meta = BOARD.meta;
   const taken = new Set([...myPids, ...draftedPids]);
@@ -70,8 +103,7 @@ function scoreAvail(myPids, draftedPids) {
   const cur = lineupPAR(myRoster, meta);
   const fit = meta.fit_weight ?? 0.5;
   const scored = avail.map((r) => {
-    // marginal starting-lineup PAR = roster need; dyn_par = dynasty asset value
-    const marg = lineupPAR([...myRoster, r], meta) - cur;
+    const marg = lineupPAR([...myRoster, r], meta) - cur;   // roster need
     return { row: r, marg, score: r.dyn_par + fit * marg };
   });
   scored.sort((a, b) => b.score - a.score);
@@ -114,6 +146,7 @@ function fmt(n) { return Math.round(n); }
 function ageClass(age) { return age == null ? "" : age < 25 ? "young" : age > 29 ? "old" : ""; }
 
 function render(draft, picks) {
+  LAST = { draft, picks };
   const meta = BOARD.meta;
   const teams = draft.settings?.teams || meta.teams;
   const rounds = draft.settings?.rounds || meta.rounds;
@@ -125,6 +158,7 @@ function render(draft, picks) {
   const myPids = new Set(picks.filter((p) => p.draft_slot === ourSlot).map((p) => p.player_id));
 
   const { scored, myRoster } = scoreAvail(myPids, draftedPids);
+  const scoreByPid = new Map(scored.map((s) => [s.row.player_id, s.score]));
 
   const nextNo = picks.length ? picks[picks.length - 1].pick_no + 1 : 1;
   const complete = draft.status === "complete";
@@ -164,36 +198,51 @@ function render(draft, picks) {
       .join("");
   }
 
+  // watchlist panel
+  renderWatchlist(draftedPids, scoreByPid);
+
   // top picks
   $("#toppicks tbody").innerHTML = scored.slice(0, 10).map(({ row, score }, i) =>
     `<tr class="${i === 0 ? "best" : ""}">` +
     `<td>${i + 1}${i === 0 ? " ★" : ""}</td>` +
-    `<td class="pname">${esc(row.name)}</td><td>${esc(row.pos)}</td><td>${row.age}</td>` +
+    `<td class="pname">${starHTML(row.player_id)} ${esc(row.name)}</td>` +
+    `<td>${esc(row.pos)}</td><td>${row.age}</td>` +
     `<td>${row.par_now_wk.toFixed(1)}</td><td>${fmt(row.dyn_par)}</td>` +
     `<td class="rng">${fmt(row.par_floor)}–${fmt(row.par_ceil)}</td>` +
     `<td class="score">${fmt(score)}</td></tr>`
   ).join("");
 
-  // best available by position
-  const posWrap = $("#positions");
-  posWrap.innerHTML = ["QB", "RB", "WR", "TE"].map((pos) => {
-    const pool = tierMark(
-      BOARD.players
-        .filter((r) => r.pos === pos && !draftedPids.has(r.player_id))
-        .sort((a, b) => b.dyn_par - a.dyn_par)
-        .slice(0, COLS_PER_POS),
-      meta.tier_break_frac
-    );
-    const maxDyn = pool.length ? pool[0].dyn_par || 1 : 1;
-    const rows = pool.map((r) => {
+  // best available by position (collapsible)
+  $("#positions").innerHTML = ["QB", "RB", "WR", "TE"].map((pos) => {
+    const full = BOARD.players
+      .filter((r) => r.pos === pos && !draftedPids.has(r.player_id))
+      .sort((a, b) => b.dyn_par - a.dyn_par)
+      .slice(0, POS_CAP[pos] || 40);
+    const expanded = EXPANDED[pos];
+    let visible = full.slice(0, expanded ? full.length : COLLAPSED_PER_POS);
+    // when collapsed, still surface any starred-available guys beyond the cut
+    if (!expanded) {
+      const extra = full.slice(COLLAPSED_PER_POS).filter((r) => WATCH.has(r.player_id));
+      visible = visible.concat(extra);
+    }
+    tierMark(visible, meta.tier_break_frac);
+    const maxDyn = visible.length ? visible[0].dyn_par || 1 : 1;
+    const rows = visible.map((r) => {
       const w = Math.max(8, Math.round((Math.max(r.dyn_par, 0) / maxDyn) * 100));
-      return `<div class="player${r._tier ? " tier-break" : ""}">` +
+      const star = WATCH.has(r.player_id) ? " starred" : "";
+      return `<div class="player${r._tier ? " tier-break" : ""}${star}">` +
+        starHTML(r.player_id) +
         `<span class="pn">${esc(r.name)}</span>` +
         `<span class="ag ${ageClass(r.age)}">${r.age}y</span>` +
         `<span class="pt">${fmt(r.dyn_par)}</span>` +
         `<span class="bar" style="width:${w}%"></span></div>`;
     }).join("");
-    return `<div class="col"><h3>${pos} <span class="ct">(${pool.length})</span></h3>${rows}</div>`;
+    const moreCount = full.length - COLLAPSED_PER_POS;
+    const moreBtn = moreCount > 0
+      ? `<button class="showmore" data-pos="${pos}">` +
+        (expanded ? "Show less" : `Show more (${moreCount})`) + `</button>`
+      : "";
+    return `<div class="col"><h3>${pos} <span class="ct">(${full.length})</span></h3>${rows}${moreBtn}</div>`;
   }).join("");
 
   // recent picks (last 10)
@@ -207,6 +256,29 @@ function render(draft, picks) {
   }).join("");
 
   $("#app").hidden = false;
+}
+
+function renderWatchlist(draftedPids, scoreByPid) {
+  const panel = $("#watchpanel");
+  const rows = [...WATCH].map((pid) => BYID.get(pid)).filter(Boolean);
+  if (!rows.length) { panel.hidden = true; return; }
+  panel.hidden = false;
+  const avail = rows.filter((r) => !draftedPids.has(r.player_id))
+    .sort((a, b) => (scoreByPid.get(b.player_id) ?? b.dyn_par) - (scoreByPid.get(a.player_id) ?? a.dyn_par));
+  const gone = rows.filter((r) => draftedPids.has(r.player_id));
+  $("#watchcount").textContent =
+    `(${avail.length} available${gone.length ? `, ${gone.length} gone` : ""})`;
+  const row = (r, isGone) =>
+    `<div class="wrow${isGone ? " gone" : ""}">` +
+    starHTML(r.player_id) +
+    `<span class="wn">${esc(r.name)}</span>` +
+    `<span class="wpos ${esc(r.pos.toLowerCase())}">${esc(r.pos)}</span>` +
+    `<span class="wage ${isGone ? "" : ageClass(r.age)}">${isGone ? "drafted" : r.age + "y"}</span>` +
+    (isGone ? "" : `<span class="wdp">${fmt(r.dyn_par)}</span>` +
+      `<span class="wc rng">${fmt(r.par_floor)}–${fmt(r.par_ceil)}</span>`) +
+    `</div>`;
+  $("#watchlist").innerHTML =
+    avail.map((r) => row(r, false)).join("") + gone.map((r) => row(r, true)).join("");
 }
 
 // ---------- refresh flow ----------
@@ -245,7 +317,18 @@ function maybeShowA2HS() {
 }
 
 // ---------- init ----------
+WATCH = loadWatch();
 $("#refresh").addEventListener("click", refresh);
+// one delegated handler for star toggles + show-more buttons
+document.addEventListener("click", (e) => {
+  const star = e.target.closest(".star");
+  if (star) { toggleStar(star.dataset.pid); return; }
+  const more = e.target.closest(".showmore");
+  if (more) {
+    EXPANDED[more.dataset.pos] = !EXPANDED[more.dataset.pos];
+    if (LAST) render(LAST.draft, LAST.picks);
+  }
+});
 maybeShowA2HS();
 refresh();
 

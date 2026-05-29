@@ -92,10 +92,11 @@ tbody tr { border-bottom: 1px solid #1a212b; }
 }
 .col h3 .ct { color: #6b7785; font-size: 11px; font-weight: 400; }
 .player {
-  display: grid; grid-template-columns: 1fr auto auto; align-items: center;
+  display: grid; grid-template-columns: 18px 1fr auto auto; align-items: center;
   gap: 6px; padding: 4px 5px; margin: 2px 0; border-radius: 5px;
   background: #20293605; font-size: 13px;
 }
+.player.starred { background: #2a2410; box-shadow: inset 2px 0 0 #f1c40f; }
 .player.tier-break { margin-top: 11px; border-top: 2px dashed #e67e22; padding-top: 8px; }
 .player .pn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .player .ag { font-size: 11px; color: #8a93a0; text-align: right; }
@@ -106,6 +107,39 @@ tbody tr { border-bottom: 1px solid #1a212b; }
   background: linear-gradient(90deg, #3498db, #2ecc71); margin-top: 2px; }
 
 .legend { margin: 10px 2px 0; font-size: 11px; line-height: 1.4; }
+
+/* ---- watchlist star ---- */
+.star {
+  cursor: pointer; color: #56606e; font-size: 15px; line-height: 1;
+  user-select: none; -webkit-tap-highlight-color: transparent; padding: 2px;
+}
+.star.on { color: #f1c40f; }
+#toppicks .pname .star { margin-right: 2px; }
+
+/* ---- show more button ---- */
+.showmore {
+  width: 100%; margin-top: 8px; padding: 7px; border: 0; border-radius: 6px;
+  background: #222c3a; color: #8fb8e0; font-size: 12.5px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.showmore:active { background: #2a3848; }
+
+/* ---- watchlist panel ---- */
+.watchrows { display: flex; flex-direction: column; gap: 2px; }
+.wrow {
+  display: grid; grid-template-columns: 18px 1fr auto auto auto auto; align-items: center;
+  gap: 8px; padding: 5px 4px; border-radius: 5px; background: #1a2230; font-size: 13.5px;
+}
+.wrow .wn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wrow .wpos { font-size: 11px; color: #8fb8e0; }
+.wrow .wpos.qb { color: #e67e22; } .wrow .wpos.rb { color: #27ae60; }
+.wrow .wpos.wr { color: #3498db; } .wrow .wpos.te { color: #9b59b6; }
+.wrow .wage { font-size: 11px; color: #8a93a0; text-align: right; }
+.wrow .wage.young { color: #2ecc71; } .wrow .wage.old { color: #e74c3c; }
+.wrow .wdp { font-weight: 600; text-align: right; min-width: 34px; }
+.wrow .wc { font-size: 12px; color: #8a93a0; text-align: right; }
+.wrow.gone { opacity: 0.5; }
+.wrow.gone .wn { text-decoration: line-through; }
 
 /* ---- add to home screen hint ---- */
 .a2hs {
