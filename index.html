@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1419">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Draft Caddie">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+<title>Draft Caddie</title>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="titleblock">
+    <h1>Draft Caddie</h1>
+    <span id="subtitle" class="subtitle">loading…</span>
+  </div>
+  <button id="refresh" class="refresh" aria-label="Refresh">
+    <span class="ricon">⟳</span><span class="rlabel">Refresh</span>
+  </button>
+</header>
+
+<div id="status" class="status"></div>
+
+<main id="app" hidden>
+
+  <section id="clock" class="clock"></section>
+
+  <section class="panel">
+    <h2>Your roster <span id="rostercount" class="muted"></span></h2>
+    <div id="roster" class="roster"></div>
+  </section>
+
+  <section class="panel pick-panel">
+    <h2>★ Best picks for you now
+      <span class="muted">score = marginal lineup + 0.6·VOR</span>
+    </h2>
+    <div class="table-wrap">
+      <table id="toppicks">
+        <thead><tr>
+          <th>#</th><th>Player</th><th>Pos</th><th>Age</th>
+          <th>Pts</th><th>Marg</th><th>VOR</th><th>Score</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Best available by position</h2>
+    <div id="positions" class="grid"></div>
+    <p class="legend muted">
+      Bar = dynasty value (multi-year, age-adjusted) vs. the top remaining at that position.
+      Dashed orange line = tier break.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2>Recent picks</h2>
+    <div class="table-wrap">
+      <table id="recent">
+        <thead><tr><th>#</th><th>Rd</th><th>Slot</th><th>Player</th><th>Pos</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<div id="a2hs" class="a2hs" hidden>
+  Tip: tap <b>Share</b> → <b>Add to Home Screen</b> to install this app.
+  <button id="a2hs-close" aria-label="Dismiss">×</button>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+name: Refresh value board
+
+on:
+  schedule:
+    - cron: "0 11 * * *"   # daily at 11:00 UTC (~6-7am ET)
+  workflow_dispatch: {}      # manual "Run workflow" button
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-board
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Regenerate board.json
+        run: python generate_board.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "draft-caddie-bot"
+          git config user.email "actions@github.com"
+          if git diff --quiet -- board.json; then
+            echo "board.json unchanged — nothing to commit."
+          else
+            git add board.json
+            git commit -m "chore: daily board refresh ($(date -u +%Y-%m-%d))"
+            git push
+          fi
