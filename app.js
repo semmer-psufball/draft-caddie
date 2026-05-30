@@ -9,8 +9,21 @@ const SLEEPER = "https://api.sleeper.app/v1";
 const COLLAPSED_PER_POS = 10;                          // rows shown before "Show more"
 const POS_CAP = { QB: 32, RB: 80, WR: 90, TE: 45 };    // max rows when expanded
 const WATCHLIST_KEY = "caddie_watchlist_v1";
-// First-run seed = the upside guys we flagged (McMillan, Burden, LaPorta, Pitts, Kraft, Sadiq)
-const SEED_WATCHLIST = ["12526", "12519", "10859", "7553", "9484", "13330"];
+const STARS_VERSION_KEY = "caddie_stars_version";
+// Curated target board — merged into your watchlist once per version bump (any manual
+// removals you make afterward are respected). Bump STARS_VERSION to push a new batch.
+const STARS_VERSION = 2;
+const DEFAULT_STARS = [
+  // WR (top need): Jameson Williams, Zay Flowers, Brian Thomas Jr, DeVonta Smith,
+  //               Rome Odunze, Parker Washington, (+ Burden, McMillan from before)
+  "8148", "9997", "11631", "7525", "11620", "9487", "12519", "12526",
+  // QB (young/value darts — wait then pounce): Jaxson Dart, Caleb Williams, Trevor Lawrence
+  "12508", "11560", "7523",
+  // TE (have Fannin; upside + taxi stash): LaPorta, Pitts, Kraft, Oronde Gadsden, Sadiq
+  "10859", "7553", "9484", "12493", "13330",
+  // RB (not a need — flag only as value-if-they-slide): Judkins, Skattebo, Tuten
+  "12512", "12481", "12490",
+];
 
 let BOARD = null;          // { meta, players: [...] }
 let BYID = null;           // player_id -> player row
@@ -29,15 +42,19 @@ const setStatus = (msg, isErr) => {
 
 // ---------- watchlist (localStorage) ----------
 function loadWatch() {
-  try {
-    const raw = localStorage.getItem(WATCHLIST_KEY);
-    if (raw === null) {                       // first run -> seed our flagged guys
-      const seed = new Set(SEED_WATCHLIST);
-      localStorage.setItem(WATCHLIST_KEY, JSON.stringify([...seed]));
-      return seed;
-    }
-    return new Set(JSON.parse(raw));
-  } catch { return new Set(); }
+  let set;
+  try { set = new Set(JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "[]")); }
+  catch { set = new Set(); }
+  let appliedV = 0;
+  try { appliedV = +(localStorage.getItem(STARS_VERSION_KEY) || 0); } catch {}
+  if (appliedV < STARS_VERSION) {             // merge the latest curated batch exactly once
+    DEFAULT_STARS.forEach((id) => set.add(id));
+    try {
+      localStorage.setItem(WATCHLIST_KEY, JSON.stringify([...set]));
+      localStorage.setItem(STARS_VERSION_KEY, String(STARS_VERSION));
+    } catch {}
+  }
+  return set;
 }
 function saveWatch() {
   try { localStorage.setItem(WATCHLIST_KEY, JSON.stringify([...WATCH])); } catch {}

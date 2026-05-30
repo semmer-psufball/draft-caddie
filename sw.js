@@ -3,7 +3,7 @@
 // - board.json: network-first, cache fallback (daily updates land; offline OK).
 // - Sleeper API: never touched here — app.js fetches it network-only on Refresh.
 
-const VERSION = "v5";
+const VERSION = "v6";
 const SHELL = `caddie-shell-${VERSION}`;
 const DATA = `caddie-data-${VERSION}`;
 const SHELL_FILES = [
